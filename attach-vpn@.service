@@ -1,0 +1,31 @@
+[Unit]
+Description=Attach wireguard to Named network namespace %i
+Requires=netns@%i.service
+After=netns@%i.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# Environment File containing address and gateway definitions
+EnvironmentFile=/etc/systemd-netns/%i.conf
+
+ExecStart=/usr/sbin/ip l a wg-%i type wireguard
+# Associate the enp3s1f0 NIC with the network namespace
+ExecStart=/usr/sbin/ip link set wg-%i netns %i
+
+# Run iproute2 (inside the netns) to bring the NIC up
+ExecStart=/usr/sbin/ip -n %i a add $V4 dev wg-%i
+ExecStart=/usr/sbin/ip -n %i a add $V6 dev wg-%i
+ExecStart=/usr/sbin/ip netns exec %i wg setconf wg-%i $WGCONF
+ExecStart=/usr/sbin/ip -n %i l s up dev wg-%i
+
+# Run iproute2 (inside the netns) to add the address/gateway
+ExecStart=/usr/sbin/ip -n %i r a default dev wg-%i
+ExecStart=/usr/sbin/ip -n %i -6 r a default dev wg-%i
+
+# Run iproute2 (inside the netns) to bring the NIC down (on stop)
+ExecStop=/usr/sbin/ip -n %i l set down dev wg-%i
+
+[Install]
+WantedBy=multi-user.target

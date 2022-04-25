@@ -1,0 +1,23 @@
+[Unit]
+Description=Example Systemd Service running in Netns
+
+# Require the network namespace is set up
+# Replace 'name' with the name of your netns 
+Requires=netns@name.service
+After=netns@name.service
+JoinsNamespaceOf=netns@name.service
+
+# Require the interface is set up
+Requires=attach-vpn@name.service
+
+# You'll only need the "attach-veth" stuff if you have a need of accessing the service from outside it's netns (i.e. if it has a web-panel)
+Requires=attach-veth@name.service
+After=attach-vpn@name.service
+After=attach-veth@name.service
+
+[Service]
+# Run the process in a non-default netns
+PrivateNetwork=true
+
+[Install]
+WantedBy=multi-user.target

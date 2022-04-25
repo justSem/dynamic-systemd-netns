@@ -1,0 +1,24 @@
+[Unit]
+Description=Attach wireguard to Named network namespace %i
+Requires=netns@%i.service
+After=netns@%i.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# Environment File containing address and gateway definitions
+EnvironmentFile=/etc/systemd-netns/%i.conf
+
+ExecStart=/usr/sbin/ip l a %i type veth peer veth0 netns %i
+ExecStart=/usr/sbin/ip l s up %i
+ExecStart=/usr/sbin/ip -n %i l s up veth0
+ExecStart=/usr/sbin/ip a add $VETHHIP dev %i
+ExecStart=/usr/sbin/ip -n %i a add $VETHPIP dev veth0
+
+# Run iproute2 (inside the netns) to bring the NIC down (on stop)
+ExecStop=/usr/sbin/ip l s down %i
+ExecStop=/usr/sbin/ip l d %i
+
+[Install]
+WantedBy=multi-user.target
